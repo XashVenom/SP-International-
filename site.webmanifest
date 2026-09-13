@@ -1,0 +1,13 @@
+{
+  "name": "SP International Pvt Ltd",
+  "short_name": "SP International",
+  "description": "Trade Beyond Borders. Spices and brass decor, sourced and quoted.",
+  "start_url": "./",
+  "display": "browser",
+  "background_color": "#faf6ee",
+  "theme_color": "#042654",
+  "icons": [
+    { "src": "assets/favicon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/favicon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
