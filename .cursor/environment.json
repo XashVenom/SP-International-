@@ -1,0 +1,16 @@
+{
+  "name": "SP International website",
+  "ports": [
+    {
+      "name": "static site",
+      "port": 8080
+    }
+  ],
+  "terminals": [
+    {
+      "name": "static-server",
+      "command": "python3 -m http.server 8080",
+      "description": "Serves the static brochure site at http://localhost:8080. Open index.html, products.html, about.html, or contact.html."
+    }
+  ]
+}
