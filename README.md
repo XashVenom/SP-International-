@@ -31,11 +31,11 @@ No build step. No cart. No server-side form handler.
 
 - `index.html` — Home
 - `products.html` — Hero products + on-request spice list
-- `about.html` — Merchant trader, Ghaziabad
+- `about.html` — Merchant trader, Sikandrabad, Uttar Pradesh
 - `contact.html` — Quote form, email, WhatsApp
 
 ## Contact (on the site)
 
 - Email: info@spinternationalpvtltd.com
 - WhatsApp: +91 9286492989
-- Location: Ghaziabad, India
+- Location: Sikandrabad, Uttar Pradesh
