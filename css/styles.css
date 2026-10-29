@@ -186,6 +186,9 @@ em { font-family: var(--serif); font-weight: 500; }
 .stat-list li { display: grid; gap: 0.3rem; padding: 1.2rem 0; border-top: 1px solid var(--line); }
 .stat-list strong { font: 500 1.55rem/1.25 var(--serif); }
 .stat-list span { font-size: 0.9rem; color: var(--muted); }
+.sitemap-list { max-width: 46rem; }
+.sitemap-list a { text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+.sitemap-list a:hover { color: var(--gold-deep); }
 .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.4rem; }
 .step { position: relative; padding: 1.75rem; border: 1px solid var(--line); border-radius: 0.65rem; background: var(--ivory); }
 .step .num { display: block; font: 500 3.4rem/1 var(--serif); color: var(--gold-deep); margin-bottom: 2rem; }

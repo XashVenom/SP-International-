@@ -202,11 +202,11 @@ after(async () => {
   if (profile) await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
-test('all pages fit desktop, tablet and small phones; images and local links work', { timeout: 60000 }, async () => {
+test('all pages fit desktop, tablet and small phones; images and local links work', { timeout: 90000 }, async () => {
   const links = new Set();
   for (const width of [1440, 768, 390, 320]) {
     await viewport(width, width < 640 ? 844 : 1000);
-    for (const page of ['index.html', 'products.html', 'about.html', 'contact.html']) {
+    for (const page of ['index.html', 'products.html', 'about.html', 'contact.html', 'sitemap.html']) {
       await navigate(page);
       assert.equal(await evaluate('document.querySelectorAll("h1").length'), 1, page);
       assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, `${page} overflows at ${width}px`);
@@ -553,31 +553,124 @@ test('without JavaScript, direct contact links remain available and draft button
   assert.deepEqual(errors, []);
 });
 
+test('sitemap and robots advertise every public page', async () => {
+  const robots = await readFile(join(root, 'robots.txt'), 'utf8');
+  assert.match(robots, /User-agent: \*/);
+  assert.match(robots, /Allow: \/\n/);
+  assert.doesNotMatch(robots, /Disallow:/);
+  assert.match(robots, /Sitemap: https:\/\/spinternationalpvtltd\.com\/sitemap\.xml\s*$/);
+  const sitemap = await readFile(join(root, 'sitemap.xml'), 'utf8');
+  for (const url of [
+    'https://spinternationalpvtltd.com/',
+    'https://spinternationalpvtltd.com/products.html',
+    'https://spinternationalpvtltd.com/about.html',
+    'https://spinternationalpvtltd.com/contact.html',
+    'https://spinternationalpvtltd.com/sitemap.html',
+  ]) {
+    assert.ok(sitemap.includes(`<loc>${url}</loc>`), url);
+  }
+  const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match => match[1]);
+  assert.ok(locs.every(url => url.startsWith('https://spinternationalpvtltd.com/')));
+  const lastmods = [...sitemap.matchAll(/<lastmod>(\d{4}-\d{2}-\d{2})<\/lastmod>/g)].map(match => match[1]);
+  assert.deepEqual(lastmods, ['2026-10-29', '2026-10-29', '2026-10-29', '2026-10-29', '2026-10-29']);
+  assert.match(sitemap, /sitemap\.html<\/loc>\s*<lastmod>2026-10-29<\/lastmod>\s*<changefreq>yearly<\/changefreq>\s*<priority>0\.3<\/priority>/);
+});
+
 test('search metadata, business structured data and accessible label targets are consistent', async () => {
   const titles = new Set();
-  for (const page of ['index.html', 'products.html', 'about.html', 'contact.html']) {
+  const pages = ['index.html', 'products.html', 'about.html', 'contact.html', 'sitemap.html'];
+  for (const page of pages) {
     await navigate(page);
     const metadata = await evaluate(`(() => {
       const ids = Array.from(document.querySelectorAll('[id]')).map(el => el.id);
+      const content = (selector) => document.querySelector(selector)?.content || '';
       return {
         title: document.title,
-        description: document.querySelector('meta[name="description"]').content,
+        description: content('meta[name="description"]'),
         canonical: document.querySelector('link[rel="canonical"]').href,
         uniqueIds: new Set(ids).size === ids.length,
         labelsValid: Array.from(document.querySelectorAll('label[for]')).every(label => !!document.getElementById(label.htmlFor)),
-        schema: Array.from(document.querySelectorAll('script[type="application/ld+json"]')).map(script => JSON.parse(script.textContent))
+        schema: Array.from(document.querySelectorAll('script[type="application/ld+json"]')).map(script => JSON.parse(script.textContent)),
+        ogSiteName: content('meta[property="og:site_name"]'),
+        ogLocale: content('meta[property="og:locale"]'),
+        ogType: content('meta[property="og:type"]'),
+        ogTitle: content('meta[property="og:title"]'),
+        ogDescription: content('meta[property="og:description"]'),
+        ogImage: content('meta[property="og:image"]'),
+        ogUrl: content('meta[property="og:url"]'),
+        twitterCard: content('meta[name="twitter:card"]'),
+        twitterTitle: content('meta[name="twitter:title"]'),
+        twitterDescription: content('meta[name="twitter:description"]'),
+        twitterImage: content('meta[name="twitter:image"]'),
+        themeColor: content('meta[name="theme-color"]'),
+        manifest: document.querySelector('link[rel="manifest"]')?.getAttribute('href') || '',
+        footerSitemap: document.querySelector('.site-footer a[href="sitemap.html"]')?.getAttribute('href') || ''
       };
     })()`);
-    assert.ok(metadata.title.length > 10 && metadata.description.length > 50);
+    assert.ok(metadata.title.length >= 50 && metadata.title.length <= 60, `${page} title ${metadata.title.length}: ${metadata.title}`);
+    assert.ok(metadata.description.length >= 140 && metadata.description.length <= 160, `${page} description ${metadata.description.length}`);
     assert.equal(titles.has(metadata.title), false);
     titles.add(metadata.title);
     assert.equal(metadata.canonical, 'https://spinternationalpvtltd.com/' + (page === 'index.html' ? '' : page));
+    assert.equal(metadata.ogUrl, metadata.canonical);
     assert.equal(metadata.uniqueIds, true);
     assert.equal(metadata.labelsValid, true);
+    assert.equal(metadata.ogSiteName, 'SP International');
+    assert.equal(metadata.ogLocale, 'en_IN');
+    assert.equal(metadata.ogType, 'website');
+    assert.equal(metadata.ogTitle, metadata.title);
+    assert.equal(metadata.ogDescription, metadata.description);
+    assert.equal(metadata.twitterCard, 'summary_large_image');
+    assert.equal(metadata.twitterTitle, metadata.title);
+    assert.equal(metadata.twitterDescription, metadata.description);
+    assert.equal(metadata.ogImage, 'https://spinternationalpvtltd.com/assets/sp-whatsapp-profile-square.png');
+    assert.equal(metadata.twitterImage, metadata.ogImage);
+    assert.equal(metadata.themeColor, '#042654');
+    assert.equal(metadata.manifest, 'site.webmanifest');
+    assert.equal(metadata.footerSitemap, 'sitemap.html');
+    assert.equal(JSON.stringify(metadata.schema).includes('SearchAction'), false);
+    assert.equal(JSON.stringify(metadata.schema).includes('"offers"'), false);
+    const types = metadata.schema.flatMap(node => node['@graph'] ? node['@graph'].map(item => item['@type']) : [node['@type']]);
     if (page === 'index.html') {
       assert.equal(metadata.schema[0]['@type'], 'Organization');
       assert.equal(metadata.schema[0].address.addressLocality, 'Sikandrabad');
+      assert.equal(metadata.schema[0].address.addressRegion, 'Uttar Pradesh');
+      assert.equal(metadata.schema[0].address.addressCountry, 'IN');
       assert.equal(metadata.schema[0].contactPoint.contactType, 'sales');
+      assert.equal(metadata.schema[0].email, 'info@spinternationalpvtltd.com');
+      assert.equal(metadata.schema[1]['@type'], 'WebSite');
+      assert.equal(metadata.schema[1]['@id'], 'https://spinternationalpvtltd.com/#website');
+      assert.equal(metadata.schema[1].url, 'https://spinternationalpvtltd.com/');
+      assert.equal(metadata.schema[1].potentialAction, undefined);
+    }
+    if (page === 'products.html') {
+      assert.ok(types.includes('ItemList'));
+      assert.ok(types.includes('BreadcrumbList'));
+      const list = metadata.schema[0]['@graph'].find(node => node['@type'] === 'ItemList');
+      assert.equal(list.numberOfItems, 4);
+      assert.deepEqual(list.itemListElement.map(entry => entry.item.name), ['Turmeric powder', 'Red chilli powder', 'Cumin seeds', 'Brass and art-metal décor']);
+      for (const entry of list.itemListElement) assert.equal(entry.item.offers, undefined);
+    }
+    if (page === 'about.html') {
+      assert.ok(types.includes('AboutPage'));
+      assert.ok(types.includes('Organization'));
+      const org = metadata.schema[0]['@graph'].find(node => node['@type'] === 'Organization');
+      assert.equal(org['@id'], 'https://spinternationalpvtltd.com/#organization');
+      assert.equal(org.address.addressLocality, 'Sikandrabad');
+    }
+    if (page === 'contact.html') {
+      assert.ok(types.includes('ContactPage'));
+      assert.ok(types.includes('ContactPoint'));
+      const point = metadata.schema[0]['@graph'].find(node => node['@type'] === 'ContactPoint');
+      assert.equal(point.contactType, 'sales');
+      assert.equal(point.telephone, '+919286492989');
+      assert.equal(point.email, 'info@spinternationalpvtltd.com');
+    }
+    if (page === 'sitemap.html') {
+      const targets = await evaluate('Array.from(document.querySelectorAll("main a")).map(a => a.getAttribute("href"))');
+      for (const href of ['index.html', 'products.html', 'about.html', 'contact.html', 'products.html#brass', 'contact.html#quote-form', 'sitemap.xml']) {
+        assert.ok(targets.includes(href), href);
+      }
     }
   }
   assert.deepEqual(errors, []);
