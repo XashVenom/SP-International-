@@ -100,6 +100,8 @@ No build step. No cart. No bundled server-side form handler; an optional owner-c
 - `products.html` — Hero products + on-request spice list
 - `about.html` — Merchant trader, Sikandrabad, Uttar Pradesh
 - `contact.html` — Quote form, email, WhatsApp
+- `sitemap.html` — HTML list of the public pages
+- `sitemap.xml` — XML sitemap for search engines
 
 ## Contact (on the site)
 
