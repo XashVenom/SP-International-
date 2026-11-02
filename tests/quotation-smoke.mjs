@@ -630,7 +630,19 @@ test('search metadata, business structured data and accessible label targets are
     assert.equal(metadata.footerSitemap, 'sitemap.html');
     assert.equal(JSON.stringify(metadata.schema).includes('SearchAction'), false);
     assert.equal(JSON.stringify(metadata.schema).includes('"offers"'), false);
-    const types = metadata.schema.flatMap(node => node['@graph'] ? node['@graph'].map(item => item['@type']) : [node['@type']]);
+    const types = [];
+    const walkSchema = (node) => {
+      if (!node || typeof node !== 'object') return;
+      if (Array.isArray(node)) { node.forEach(walkSchema); return; }
+      const type = node['@type'];
+      if (typeof type === 'string') types.push(type);
+      else if (Array.isArray(type)) types.push(...type.filter(value => typeof value === 'string'));
+      Object.values(node).forEach(walkSchema);
+    };
+    metadata.schema.forEach(walkSchema);
+    for (const forbidden of ['Product', 'Offer', 'AggregateOffer', 'AggregateRating', 'Review']) {
+      assert.equal(types.includes(forbidden), false, `${page} must not use schema.org ${forbidden}`);
+    }
     if (page === 'index.html') {
       assert.equal(metadata.schema[0]['@type'], 'Organization');
       assert.equal(metadata.schema[0].address.addressLocality, 'Sikandrabad');
@@ -649,7 +661,11 @@ test('search metadata, business structured data and accessible label targets are
       const list = metadata.schema[0]['@graph'].find(node => node['@type'] === 'ItemList');
       assert.equal(list.numberOfItems, 4);
       assert.deepEqual(list.itemListElement.map(entry => entry.item.name), ['Turmeric powder', 'Red chilli powder', 'Cumin seeds', 'Brass and art-metal décor']);
-      for (const entry of list.itemListElement) assert.equal(entry.item.offers, undefined);
+      for (const entry of list.itemListElement) {
+        assert.equal(entry.item['@type'], 'Thing');
+        assert.equal(entry.item.offers, undefined);
+        assert.equal(entry.item.aggregateRating, undefined);
+      }
     }
     if (page === 'about.html') {
       assert.ok(types.includes('AboutPage'));
